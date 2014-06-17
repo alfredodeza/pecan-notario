@@ -1,32 +1,16 @@
-from unittest import TestCase
 
 
-class TestWrapperValidation(TestCase):
+class TestWrapperValidation(object):
 
-    def setUp(self):
+    def setup(self):
+        self.app = self.make_app()
+
+    def make_app(self, schema=('key', 'value')):
         import pecan_notario
         from pecan import Pecan, expose, request
         from webtest import TestApp
 
-        simple_schema = ('key', 'value')
-        #simple_schema = {
-        #    "type": "array",
-        #    "items": [
-        #        {"type": "string"},
-        #        {"type": "object",
-        #            "properties": {
-        #                "bar":{
-        #                    "items": [
-        #                        {"type": "string"},
-        #                        {"type": "any"},
-        #                        {"type": "number"},
-        #                        {"type": "integer"}
-        #                    ]
-        #                }
-        #            }
-        #        }
-        #    ]
-        #}
+        simple_schema = schema
 
         class RootController(object):
             @expose('json')
@@ -36,7 +20,7 @@ class TestWrapperValidation(TestCase):
                     return dict(success=True)
                 return dict(success=False, error=str(request.validation_error))
 
-        self.app = TestApp(Pecan(RootController()))
+        return TestApp(Pecan(RootController()))
 
     def test_basic_functionality(self):
         body = '{"key":"value"}'
@@ -45,70 +29,63 @@ class TestWrapperValidation(TestCase):
         )
         assert response.body == '{"success": true}'
         assert response.namespace == {"success": True}
-        #assert response.validation_error is None
 
     def test_basic_error(self):
-        body = '{"key":"vvalue"}'
+        body = '{"key":"vvalue"}' # see the extra letter there champ?
         response = self.app.post('/', body,
-            [('Content-Type', 'application/json')]
+            [('Content-Type', 'application/json')],
+            expect_errors=True,
         )
-        assert response.body == '{"success": true}'
-        assert response.namespace == {"success": True}
-        #assert response.request.validation_error is None
+        assert response.json.get('success') == False
+
+
+    def test_add_the_actual_error(self):
+        body = '{"key":"vvalue"}' # see the extra letter there champ?
+        response = self.app.post('/', body,
+            [('Content-Type', 'application/json')],
+            expect_errors=True,
+        )
+        error = response.json.get('error')
+        assert error == "-> key -> vvalue  did not match 'value'"
 
     def test_no_errors(self):
-        body = '["foo", {"bar":["baz", null, 1.0, 2]}]'
+        body = '{"key": "value"}'
         response = self.app.post('/', body,
-            [('Content-Type', 'application/json')]
+            [('Content-Type', 'application/json')],
+            expect_errors=True,
         )
         assert response.body == '{"success": true}'
         assert response.namespace == {"success": True}
-        #assert response.request.validation_error is None
 
     def test_with_empty_content(self):
         body = ''
         response = self.app.post('/', body,
-            [('Content-Type', 'application/json')]
+            [('Content-Type', 'application/json')],
+            expect_errors=True,
         )
         assert response.body == '{"success": false, "error": "No JSON object could be decoded"}'  # noqa
         assert response.namespace == {"success": False, "error": "No JSON object could be decoded"}  # noqa
-        #assert response.request.validation_error is not None
 
     def test_with_invalid_data(self):
-        body = '[1, 2, 3]'
-        response = self.app.post('/', body,
-            [('Content-Type', 'application/json')]
+        body = '{"foo": [1, 2, 3]}'
+        app = self.make_app(schema=('foo', [1,2,3,4]))
+        response = app.post('/', body,
+            [('Content-Type', 'application/json')],
+            expect_errors=True,
         )
-        assert response.body == '{"success": false, "error": "Length of list [1, 2, 3] for field \'_data\' is not equal to length of schema list"}'  # noqa
-        assert response.namespace == {"success": False, "error": "Length of list [1, 2, 3] for field \'_data\' is not equal to length of schema list"}  # noqa
-        #assert response.request.validation_error is not None
+        error = response.json.get('error')
+        assert 'did not match [1, 2, 3, 4]' in error
 
 
 class TestCustomHandler(TestWrapperValidation):
-    def setUp(self):
+
+    def make_app(self, schema=('key', 'value')):
         import pecan_notario
         from pecan import Pecan, expose, request
         from pecan.middleware.recursive import RecursiveMiddleware
         from webtest import TestApp
 
-        simple_schema = {
-            "type": "array",
-            "items": [
-                {"type": "string"},
-                {"type": "object",
-                    "properties": {
-                        "bar":{
-                            "items": [
-                                {"type": "string"},
-                                {"type": "any"},
-                                {"type": "number"},
-                                {"type": "integer"}
-                            ]
-                        }
-                    }
-                }
-            ]
-        }
+        simple_schema = schema
 
         class RootControllerTwo(object):
             @expose('json')
@@ -120,35 +97,18 @@ class TestCustomHandler(TestWrapperValidation):
             def error(self, **kw):
                 return dict(success=False, error=str(request.validation_error))
 
-        self.app = TestApp(RecursiveMiddleware(Pecan(RootControllerTwo())))
+        return TestApp(RecursiveMiddleware(Pecan(RootControllerTwo())))
 
 
 class TestCallableHandler(TestWrapperValidation):
 
-    def setUp(self):
+    def make_app(self, schema=('key', 'value')):
         import pecan_notario
         from pecan import Pecan, expose, request
         from pecan.middleware.recursive import RecursiveMiddleware
         from webtest import TestApp
 
-        simple_schema = {
-            "type": "array",
-            "items": [
-                {"type": "string"},
-                {"type": "object",
-                    "properties": {
-                        "bar":{
-                            "items": [
-                                {"type": "string"},
-                                {"type": "any"},
-                                {"type": "number"},
-                                {"type": "integer"}
-                            ]
-                        }
-                    }
-                }
-            ]
-        }
+        simple_schema = schema
 
         class RootControllerTwo(object):
             @expose('json')
@@ -162,4 +122,4 @@ class TestCallableHandler(TestWrapperValidation):
             def error(self, **kw):
                 return dict(success=False, error=str(request.validation_error))
 
-        self.app = TestApp(RecursiveMiddleware(Pecan(RootControllerTwo())))
+        return TestApp(RecursiveMiddleware(Pecan(RootControllerTwo())))
