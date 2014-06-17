@@ -33,7 +33,7 @@ def validate(schema, handler=None, status=400, **kw):
                     body = request.body.decode()
                     if not body:
                         raise ValueError('No JSON object could be decoded')
-                    data = json.loads(request.body.decode())
+                    data = json.loads(body)
                     notario.validate(data, schema)
                 except (Invalid, ValueError) as error:
                     request.validation_error = error
