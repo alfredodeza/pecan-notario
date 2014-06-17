@@ -4,10 +4,10 @@ import json
 import notario
 from notario.exceptions import Invalid
 
-__all__ = ['with_schema']
+__all__ = ['validate']
 
 
-def with_schema(schema, handler=None, status=400, **kw):
+def validate(schema, handler=None, status=400, **kw):
     """
     Used to decorate a Pecan controller with form creation for GET | HEAD and
     form validation for anything else (e.g., POST | PUT | DELETE ).
@@ -30,7 +30,10 @@ def with_schema(schema, handler=None, status=400, **kw):
 
             if request.method in ('POST', 'PUT'):
                 try:
-                    data = json.loads(request.body)
+                    body = request.body.decode()
+                    if not body:
+                        raise ValueError('No JSON object could be decoded')
+                    data = json.loads(request.body.decode())
                     notario.validate(data, schema)
                 except (Invalid, ValueError) as error:
                     request.validation_error = error
