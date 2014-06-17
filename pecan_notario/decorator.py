@@ -1,12 +1,13 @@
-from pecan import request, redirect
+from pecan import request, response, redirect
 
 import json
 import notario
+from notario.exceptions import Invalid
 
 __all__ = ['with_schema']
 
 
-def with_schema(schema, handler=None, **kw):
+def with_schema(schema, handler=None, status=400, **kw):
     """
     Used to decorate a Pecan controller with form creation for GET | HEAD and
     form validation for anything else (e.g., POST | PUT | DELETE ).
@@ -26,16 +27,16 @@ def with_schema(schema, handler=None, **kw):
 
         def wrapped(*args, **kwargs):
             request.validation_error = None
-            request.foo = 1
 
             if request.method in ('POST', 'PUT'):
                 try:
                     data = json.loads(request.body)
                     notario.validate(data, schema)
-                except ValueError, error:
+                except (Invalid, ValueError) as error:
                     request.validation_error = error
                     if handler:
                         redirect_to_handler(error, handler)
+                    response.status = 400
 
             return f(*args, **kwargs)
 
