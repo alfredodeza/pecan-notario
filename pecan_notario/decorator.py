@@ -22,6 +22,7 @@ def validate(schema, handler=None, status=400, **kw):
     :param schema: A JSON schema.
     :param handler: A URI path to redirect to when schema validation fails.
                     Can also be a callable that returns a URI path.
+    :param status: The HTTP response code to use. Defaults to 400
     """
     def deco(f):
 
@@ -36,6 +37,9 @@ def validate(schema, handler=None, status=400, **kw):
                     data = json.loads(body)
                     notario.validate(data, schema)
                 except (Invalid, ValueError) as error:
+                    # TODO: It would be nice if we could have a sane default
+                    # here where we set the response body instead of requiring
+                    # a handler
                     request.validation_error = error
                     if handler:
                         redirect_to_handler(error, handler)
@@ -57,9 +61,7 @@ def redirect_to_handler(error, location):
     itself, e.g.::
 
         @expose()
-        @with_schema(some_schema, error_cfg={
-            'handler': '/some/handler'
-        })
+        @validate(some_schema, '/some/handler')
         def some_controller(self, **kw):
             if some_bad_condition():
                 error_exception = ...
