@@ -14,7 +14,7 @@ class TestWrapperValidation(object):
 
         class RootController(object):
             @expose('json')
-            @pecan_notario.with_schema(simple_schema)
+            @pecan_notario.validate(simple_schema)
             def index(self, **kw):
                 if request.validation_error is None:
                     return dict(success=True)
@@ -27,8 +27,7 @@ class TestWrapperValidation(object):
         response = self.app.post('/', body,
             [('Content-Type', 'application/json')]
         )
-        assert response.body == '{"success": true}'
-        assert response.namespace == {"success": True}
+        assert response.json['success'] == True
 
     def test_basic_error(self):
         body = '{"key":"vvalue"}' # see the extra letter there champ?
@@ -46,7 +45,7 @@ class TestWrapperValidation(object):
             expect_errors=True,
         )
         error = response.json.get('error')
-        assert error == "-> key -> vvalue  did not match 'value'"
+        assert error == "-> key -> vvalue did not match 'value'"
 
     def test_no_errors(self):
         body = '{"key": "value"}'
@@ -54,17 +53,16 @@ class TestWrapperValidation(object):
             [('Content-Type', 'application/json')],
             expect_errors=True,
         )
-        assert response.body == '{"success": true}'
         assert response.namespace == {"success": True}
 
     def test_with_empty_content(self):
-        body = ''
+        body = ""
         response = self.app.post('/', body,
             [('Content-Type', 'application/json')],
             expect_errors=True,
         )
-        assert response.body == '{"success": false, "error": "No JSON object could be decoded"}'  # noqa
-        assert response.namespace == {"success": False, "error": "No JSON object could be decoded"}  # noqa
+        assert response.json['error'] == "No JSON object could be decoded"
+        assert response.json.get('success') == False
 
     def test_with_invalid_data(self):
         body = '{"foo": [1, 2, 3]}'
@@ -89,7 +87,7 @@ class TestCustomHandler(TestWrapperValidation):
 
         class RootControllerTwo(object):
             @expose('json')
-            @pecan_notario.with_schema(simple_schema, handler='/error')
+            @pecan_notario.validate(simple_schema, handler='/error')
             def index(self, **kw):
                 return dict(success=True)
 
@@ -112,7 +110,7 @@ class TestCallableHandler(TestWrapperValidation):
 
         class RootControllerTwo(object):
             @expose('json')
-            @pecan_notario.with_schema(
+            @pecan_notario.validate(
                 simple_schema, handler=lambda: '/error'
             )
             def index(self, **kw):
