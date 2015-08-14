@@ -21,7 +21,7 @@ class JSONValidationException(WSGIHTTPException):
             del self.content_length
         headerlist = list(self.headerlist)
         content_type = 'application/json'
-        body = '{"error": "%s", "success": false}' % self.detail
+        body = '{"error": "%s"}' % self.detail
         resp = Response(
             body,
             status=self.status,
