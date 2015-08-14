@@ -124,4 +124,58 @@ class TestCallableHandler(TestWrapperValidation):
         return TestApp(RecursiveMiddleware(Pecan(RootControllerTwo())))
 
 
+# This is the behavior that gets returned when nothing is configured as
+# a handler
 
+
+class TestDefaultValidation(object):
+
+    def setup(self):
+        self.app = self.make_app()
+
+    def make_app(self, schema=('key', 'value')):
+        import pecan_notario
+        from pecan import Pecan, expose, request
+        from webtest import TestApp
+
+        simple_schema = schema
+
+        class RootController(object):
+            @expose('json')
+            @pecan_notario.validate(simple_schema)
+            def index(self, **kw):
+                if request.validation_error is None:
+                    return dict(success=True)
+                return dict(success=False, error=str(request.validation_error))
+
+        return TestApp(Pecan(RootController()))
+
+    def test_basic_functionality(self):
+        body = '{"key":"value"}'
+        response = self.app.post(
+            '/',
+            body,
+            [('Content-Type', 'application/json')]
+        )
+        assert response.json['success'] is True
+
+    def test_basic_error(self):
+        body = '{"key":"vvalue"}'
+        response = self.app.post(
+            '/',
+            body,
+            [('Content-Type', 'application/json')],
+            expect_errors=True,
+        )
+        result = response.json.get('error', '')
+        assert 'vvalue did not match' in result
+
+    def test_status_int_is_set(self):
+        body = '{"key":"vvalue"}'
+        response = self.app.post(
+            '/',
+            body,
+            [('Content-Type', 'application/json')],
+            expect_errors=True,
+        )
+        assert response.status_int == 400
