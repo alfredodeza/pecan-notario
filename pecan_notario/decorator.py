@@ -1,8 +1,9 @@
-from pecan import request, response, redirect
+from pecan import request, redirect
 
 import json
 import notario
 from notario.exceptions import Invalid
+from pecan_notario.exceptions import JSONValidationException
 
 __all__ = ['validate']
 
@@ -43,7 +44,14 @@ def validate(schema, handler=None, status=400, **kw):
                     request.validation_error = error
                     if handler:
                         redirect_to_handler(error, handler)
-                    response.status = 400
+                    # a controller can say `handler=False` to signal they don't
+                    # want to delegate, not even to the fallback
+                    if handler is None:
+                        headers = {'Content-Type': 'application/json'}
+                        raise JSONValidationException(
+                            detail=error,
+                            headers=headers
+                        )
 
             return f(*args, **kwargs)
 
