@@ -14,7 +14,7 @@ class TestWrapperValidation(object):
 
         class RootController(object):
             @expose('json')
-            @pecan_notario.validate(simple_schema)
+            @pecan_notario.validate(simple_schema, handler=False)
             def index(self, **kw):
                 if request.validation_error is None:
                     return dict(success=True)
@@ -54,6 +54,7 @@ class TestWrapperValidation(object):
             expect_errors=True,
         )
         assert response.namespace == {"success": True}
+
 
     def test_with_empty_content(self):
         body = ""
@@ -121,3 +122,6 @@ class TestCallableHandler(TestWrapperValidation):
                 return dict(success=False, error=str(request.validation_error))
 
         return TestApp(RecursiveMiddleware(Pecan(RootControllerTwo())))
+
+
+
