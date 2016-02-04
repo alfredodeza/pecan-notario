@@ -5,6 +5,15 @@ import re
 module_file = open("pecan_notario/__init__.py").read()
 metadata = dict(re.findall("__([a-z]+)__\s*=\s*'([^']+)'", module_file))
 
+requirements = ['pecan', 'notario']
+
+# ordered dict might not be here (needed for python 2.6)
+try:
+    from collections import OrderedDict
+except:
+    requirements.append('ordereddict')
+
+
 setup(
     name='pecan-notario',
     version=metadata['version'],
@@ -25,7 +34,7 @@ setup(
     author='Alfredo Deza',
     author_email='contact at deza.pe',
     license='MIT',
-    install_requires=['pecan', 'notario'],
+    install_requires=requirements,
     tests_require=['WebTest >= 1.3.1'],  # py3 compat
     zip_safe=False,
     packages=find_packages(exclude=['ez_setup']),
