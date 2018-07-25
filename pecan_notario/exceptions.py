@@ -20,10 +20,12 @@ class JSONValidationException(WSGIHTTPException):
         if self.content_length is not None:
             del self.content_length
         headerlist = list(self.headerlist)
+        charset = 'utf-8'
         content_type = 'application/json'
         body = '{"error": "%s"}' % self.detail
         resp = Response(
             body,
+            charset=charset,
             status=self.status,
             headerlist=headerlist,
             content_type=content_type
